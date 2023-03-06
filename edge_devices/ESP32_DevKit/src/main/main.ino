@@ -6,6 +6,9 @@
 #include <U8g2lib.h>
 #include <U8x8lib.h>
 #include <Adafruit_BMP280.h>
+#include <WebServer.h>
+#include <WiFiClient.h>
+WiFiClient wifiClient;
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -17,9 +20,29 @@
 #define POWER_PIN  25
 #define SIGNAL_PIN 33
 
+// Wifi SSID and password
+const char* ssid = "";
+const char* password = "";
+
 DHT dht(DHT_PIN, DHT_TYPE);
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 Adafruit_BMP280 bmp;
+WebServer server ( 80 );
+
+// utility function to begin server
+void beginServer() {
+  server.on("/", handleRoot)
+  server.begin();
+  Serial.println("HTTP server started");
+}
+
+void handleRoot() {
+  server.send(200, "text/html", getPage());
+}
+
+String getPage() {
+  // write the HTML page here
+}
 
 void setup() {
   Serial.begin(115200);
@@ -32,6 +55,11 @@ void setup() {
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
   pinMode(POWER_PIN, OUTPUT); 
   digitalWrite(POWER_PIN, LOW);
+  WiFi.enableSTA(true); // to connect to wifi
+  WiFi.begin(ssid, password);
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  beginServer();
   u8x8.begin();
   u8x8.setPowerSave(0);
   u8x8.setFont(u8x8_font_chroma48medium8_r);
@@ -41,10 +69,14 @@ void loop() {
 
   delay(5000);
 
+  server.handleClient();
+
   float humidity = dht.readHumidity();
   float temperature = dht.readTemperature();
 
   float pressure = bmp.readPressure();
+
+  
 
   digitalWrite(POWER_PIN, HIGH); 
   delay(10);                 
